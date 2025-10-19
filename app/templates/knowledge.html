@@ -1,0 +1,348 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>База знаний - Support Desk</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/navigation.js"></script>
+    <script src="/static/menu_loader.js"></script>
+    <script src="/static/notification.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="text-decoration: none; color: inherit;">
+                    <h1>Support Desk</h1>
+                </a>
+            </div>
+            <div class="sidebar-content">
+                <div class="sidebar-section">
+                    <div class="main-nav" id="mainNav">
+                        <!-- Меню загружается динамически -->
+                    </div>
+                </div>
+            </div>
+            <div class="sidebar-footer">
+                <form method="post" action="/logout">
+                    <button type="submit" class="logout-btn">
+                        <span class="material-icons">logout</span>
+                        <span class="btn-text">Выйти</span>
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <main class="main-content knowledge-page">
+            <div class="knowledge-shell">
+                <div class="knowledge-page-header">
+                    <div>
+                        <h1>База знаний</h1>
+                        <p>Управление базой данных вопросов и ответов</p>
+                    </div>
+                    <div class="knowledge-stat-card stat-card stat-card-inline">
+                        <span class="stat-value" id="entriesCount">-</span>
+                        <span class="stat-label">записей в базе</span>
+                    </div>
+                </div>
+
+                <section class="knowledge-upload card">
+                    <header class="knowledge-upload-header">
+                        <div class="knowledge-upload-title">
+                            <h3 class="card-title">Загрузка базы знаний</h3>
+                            <p class="card-description">
+                                Загрузите файлы с документацией и правилами. Поддерживаются: <strong>PDF, DOCX, Markdown, Excel</strong>.
+                            </p>
+                        </div>
+                    </header>
+
+                    <div class="knowledge-upload-body">
+                        <form id="uploadForm" class="upload-form" enctype="multipart/form-data">
+                            <div class="file-upload-area">
+                                <input id="fileInput" name="files" type="file" accept=".pdf,.docx,.doc,.md,.markdown,.xlsx,.xls" multiple class="file-input-hidden">
+                                <label for="fileInput" class="file-upload-zone" tabindex="0">
+                                    <div class="upload-icon">
+                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="17 8 12 3 7 8"></polyline>
+                                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                                        </svg>
+                                    </div>
+                                    <div class="upload-text">
+                                        <span class="upload-primary">Выберите файлы (можно несколько)</span>
+                                        <span class="upload-secondary">или перетащите их сюда</span>
+                                    </div>
+                                    <div class="upload-formats">Форматы: PDF, DOCX, Markdown, Excel</div>
+                                </label>
+                            </div>
+                            
+                            <div class="upload-options" style="margin: 1rem 0;">
+                                <label style="display: flex; align-items: center; font-weight: 500;">
+                                    <input type="checkbox" id="clearDatabase" checked style="margin-right: 0.5rem;">
+                                    Полностью очистить базу знаний перед загрузкой
+                                </label>
+                            </div>
+                            
+                            <div class="upload-action-stack">
+                                <button type="submit" class="btn btn-soft-primary btn-large" id="uploadButton" disabled>
+                                    <span class="material-icons">cloud_upload</span>
+                                    <span class="btn-label">Загрузить и обновить базу</span>
+                                </button>
+                                <div id="fileName" class="selected-file-info"></div>
+                                <div id="uploadStatus" class="upload-status-message"></div>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Унифицированная форма для всех типов файлов
+        const uploadForm = document.getElementById('uploadForm');
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const uploadButton = document.getElementById('uploadButton');
+        const uploadStatus = document.getElementById('uploadStatus');
+        const entryCountLabel = document.getElementById('entriesCount');
+
+        // Обработка выбора файлов
+        fileInput.addEventListener('change', function(e) {
+            const files = e.target.files;
+            if (files && files.length > 0) {
+                let filesHtml = '<div class="files-list">';
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const fileType = getFileType(file.name);
+                    filesHtml += `
+                        <div class="file-selected" data-file-index="${i}">
+                            <div class="file-main-content">
+                                <div class="file-icon-display">
+                                    <span class="material-icons">${getFileIcon(fileType)}</span>
+                                </div>
+                                <div class="file-details">
+                                    <div class="file-name-display">${file.name}</div>
+                                    <div class="file-size-display">${(file.size / 1024).toFixed(1)} KB - ${fileType.toUpperCase()}</div>
+                                </div>
+                            </div>
+                            <button type="button" class="file-clear-btn" onclick="removeFile(${i})" title="Удалить файл">
+                                <span class="material-icons">close</span>
+                            </button>
+                        </div>`;
+                }
+                filesHtml += '</div>';
+                fileName.innerHTML = filesHtml;
+                uploadButton.disabled = false;
+            } else {
+                clearFileInput();
+            }
+        });
+
+        // Очистка выбранных файлов
+        function clearFileInput() {
+            fileInput.value = '';
+            fileName.innerHTML = '';
+            uploadButton.disabled = true;
+        }
+
+        // Удаление конкретного файла
+        function removeFile(indexToRemove) {
+            const dt = new DataTransfer();
+            const files = fileInput.files;
+            
+            // Копируем все файлы кроме удаляемого
+            for (let i = 0; i < files.length; i++) {
+                if (i !== indexToRemove) {
+                    dt.items.add(files[i]);
+                }
+            }
+            
+            // Обновляем input
+            fileInput.files = dt.files;
+            
+            // Перерисовываем список файлов
+            fileInput.dispatchEvent(new Event('change'));
+        }
+
+        // Определение типа файла
+        function getFileType(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            if (['pdf'].includes(ext)) return 'pdf';
+            if (['docx', 'doc'].includes(ext)) return 'docx';
+            if (['xlsx', 'xls'].includes(ext)) return 'excel';
+            if (['md', 'markdown'].includes(ext)) return 'markdown';
+            if (['txt'].includes(ext)) return 'txt';
+            return 'document';
+        }
+
+        // Иконка для типа файла
+        function getFileIcon(fileType) {
+            switch (fileType) {
+                case 'pdf': return 'picture_as_pdf';
+                case 'docx': return 'article';
+                case 'excel': return 'table_chart';
+                case 'markdown': return 'code';
+                case 'txt': return 'text_snippet';
+                default: return 'description';
+            }
+        }
+
+        // Обработка отправки формы
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!fileInput.files || fileInput.files.length === 0) return;
+
+            const formData = new FormData();
+            
+            // Получаем значение чекбокса очистки БД
+            const clearDbCheckbox = document.getElementById('clearDatabase');
+            const shouldClearDb = clearDbCheckbox ? clearDbCheckbox.checked : true;
+            
+            // Разделяем файлы по типам
+            const excelFiles = [];
+            const documentFiles = [];
+            
+            for (let i = 0; i < fileInput.files.length; i++) {
+                const file = fileInput.files[i];
+                const fileType = getFileType(file.name);
+                
+                if (fileType === 'excel') {
+                    excelFiles.push(file);
+                } else {
+                    documentFiles.push(file);
+                }
+            }
+            
+            let uploadPromises = [];
+            
+            // Загрузка Excel файлов (если есть)
+            if (excelFiles.length > 0) {
+                for (let i = 0; i < excelFiles.length; i++) {
+                    const excelFile = excelFiles[i];
+                    const excelFormData = new FormData();
+                    excelFormData.append('file', excelFile);
+                    // Очищаем базу только для первого Excel файла, если галочка стоит
+                    excelFormData.append('clear_database', (shouldClearDb && i === 0).toString());
+                    
+                    uploadPromises.push(
+                        fetch('/admin/knowledge/upload', {
+                            method: 'POST',
+                            body: excelFormData,
+                            credentials: 'same-origin',
+                        }).then(async response => {
+                            if (!response.ok) {
+                                const detail = await response.json().catch(() => ({}));
+                                throw new Error(`${excelFile.name}: ${detail.detail || 'Не удалось обработать Excel файл'}`);
+                            }
+                            const data = await response.json();
+                            return `${excelFile.name}: загружено ${data.entries} записей`;
+                        })
+                    );
+                }
+            }
+            
+            // Загрузка документов (если есть) 
+            if (documentFiles.length > 0) {
+                const docsFormData = new FormData();
+                for (const docFile of documentFiles) {
+                    docsFormData.append('files', docFile);
+                }
+                // Очищаем базу только если галочка стоит И нет Excel файлов (иначе Excel уже очистил)
+                docsFormData.append('clear_database', (shouldClearDb && excelFiles.length === 0).toString());
+                
+                uploadPromises.push(
+                    fetch('/api/knowledge/upload-files', {
+                        method: 'POST',
+                        body: docsFormData,
+                        credentials: 'same-origin',
+                    }).then(async response => {
+                        if (!response.ok) {
+                            const detail = await response.json().catch(() => ({}));
+                            throw new Error(`Документы: ${detail.detail || 'Не удалось обработать файлы'}`);
+                        }
+                        const data = await response.json();
+                        let message = `Документы: обработано ${data.total_chunks} чанков из ${data.processed_files.length} файлов`;
+                        if (data.errors && data.errors.length > 0) {
+                            message += `. Ошибки: ${data.errors.join(', ')}`;
+                        }
+                        return message;
+                    })
+                );
+            }
+            
+            uploadStatus.innerHTML = '<div class="status-loading"><span class="material-icons">hourglass_top</span> Обработка файлов...</div>';
+            
+            try {
+                const results = await Promise.all(uploadPromises);
+                const successMessage = results.join('<br>');
+                uploadStatus.innerHTML = `<div class="status-success"><span class="material-icons">check_circle</span> Успешно!<br>${successMessage}</div>`;
+                clearFileInput();
+                await refreshStats();
+            } catch (error) {
+                uploadStatus.innerHTML = '<div class="status-error"><span class="material-icons">error_outline</span> Ошибка: ' + error.message + '</div>';
+            }
+            
+
+        });
+
+        // Drag & Drop поддержка
+        const uploadZone = document.querySelector('.file-upload-zone');
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadZone.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadZone.addEventListener(eventName, () => uploadZone.classList.add('drag-active'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadZone.addEventListener(eventName, () => uploadZone.classList.remove('drag-active'), false);
+        });
+
+        uploadZone.addEventListener('drop', function(e) {
+            const droppedFiles = e.dataTransfer.files;
+            if (droppedFiles.length > 0) {
+                // Создаем новый DataTransfer для объединения файлов
+                const dt = new DataTransfer();
+                
+                // Сначала добавляем уже выбранные файлы
+                const existingFiles = fileInput.files;
+                for (let i = 0; i < existingFiles.length; i++) {
+                    dt.items.add(existingFiles[i]);
+                }
+                
+                // Затем добавляем новые файлы из drag & drop
+                for (let i = 0; i < droppedFiles.length; i++) {
+                    dt.items.add(droppedFiles[i]);
+                }
+                
+                // Обновляем input
+                fileInput.files = dt.files;
+                fileInput.dispatchEvent(new Event('change'));
+            }
+        }, false);
+
+        // Обновление статистики
+        async function refreshStats() {
+            try {
+                const response = await fetch('/api/knowledge/stats', { credentials: 'same-origin' });
+                if (!response.ok) return;
+                const data = await response.json();
+                entryCountLabel.textContent = data.total_entries;
+            } catch (error) {
+                console.error('Не удалось обновить статистику', error);
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshStats();
+        });
+    </script>
+    <footer class="site-footer">
+        <p>© 2025 Центр искусственного интеллекта СФУ</p>
+    </footer>
+</body>
+</html>

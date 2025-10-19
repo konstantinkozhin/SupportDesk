@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support Desk — Вход</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="login-page">
+    <div class="login-layout">
+        <div class="login-card">
+            <h1 class="login-title">Support Desk</h1>
+            <p class="login-subtitle">Введите данные администратора</p>
+            
+            <form id="loginForm" class="login-form" autocomplete="off">
+                <div class="form-group">
+                    <label for="username" class="form-label">Логин</label>
+                    <input id="username" name="username" type="text" class="form-input" required autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="password" class="form-label">Пароль</label>
+                    <input id="password" name="password" type="password" class="form-input" required>
+                </div>
+
+                <div id="loginError" class="login-error hidden"></div>
+                
+                <button type="submit" class="btn btn-soft-primary btn-large btn-full">
+                    <span class="material-icons" aria-hidden="true">login</span>
+                    <span class="btn-label">Войти</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const errorLabel = document.getElementById('loginError');
+        const submitButton = loginForm.querySelector('button[type="submit"]');
+        const submitButtonDefaultContent = submitButton.innerHTML;
+        let authSucceeded = false;
+
+        loginForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const username = loginForm.username.value.trim();
+            const password = loginForm.password.value;
+            authSucceeded = false;
+            errorLabel.classList.add('hidden');
+            errorLabel.textContent = '';
+
+            submitButton.disabled = true;
+            submitButton.classList.add('is-loading');
+            submitButton.innerHTML = `
+                <span class="material-icons btn-spinner" aria-hidden="true">autorenew</span>
+                <span class="btn-label">Входим...</span>
+            `;
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password }),
+                });
+                if (!response.ok) {
+                    const detail = await response.json().catch(() => ({}));
+                    throw new Error(detail.detail || 'Не удалось авторизоваться');
+                }
+                authSucceeded = true;
+                window.location.href = '/';
+            } catch (error) {
+                errorLabel.textContent = error.message;
+                errorLabel.classList.remove('hidden');
+            } finally {
+                if (!authSucceeded) {
+                    submitButton.disabled = false;
+                    submitButton.classList.remove('is-loading');
+                    submitButton.innerHTML = submitButtonDefaultContent;
+                }
+            }
+        });
+
+        loginForm.addEventListener('input', () => {
+            if (!errorLabel.classList.contains('hidden')) {
+                errorLabel.classList.add('hidden');
+                errorLabel.textContent = '';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+services:
+  # Основное приложение FastAPI
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: support_app
+    ports:
+      - "8000:8000"
+    volumes:
+      # Монтируем весь проект для разработки (hot reload)
+      # Включает код и configs/ - изменения применяются автоматически!
+      - .:/app
+      # Данные (базы данных SQLite)
+      - ./data:/app/data
+      # Кеш для моделей Whisper (скачиваются один раз)
+      - whisper_cache:/root/.cache/whisper
+    environment:
+      # === Эти переменные берутся из .env файла ===
+      # Создайте .env из .env.example и заполните свои значения
+      
+      # LLM настройки (ОБЯЗАТЕЛЬНО)
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_API_BASE=${LLM_API_BASE}
+      - LLM_MODEL=${LLM_MODEL}
+      
+      # Telegram бот (ОБЯЗАТЕЛЬНО)
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      
+      # VK бот (ОПЦИОНАЛЬНО)
+      - VK_GROUP_TOKEN=${VK_GROUP_TOKEN:-}
+      - VK_GROUP_ID=${VK_GROUP_ID:-}
+      
+      # Безопасность
+      - SECRET_KEY=${SECRET_KEY:-change_me_in_production}
+      
+      # Ngrok (ОПЦИОНАЛЬНО, для туннелирования)
+      - NGROK_AUTH_TOKEN=${NGROK_AUTH_TOKEN:-}
+      
+      # Python настройки
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+      
+    restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+# Volumes для постоянного хранения данных
+volumes:
+  # Кеш моделей Whisper (~1.5GB для medium)
+  # Скачивается при первом запуске, потом используется из кеша
+  whisper_cache:
+
+networks:
+  default:
+    name: support_network

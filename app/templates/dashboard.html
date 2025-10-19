@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Дашборд - Support Desk</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/navigation.js"></script>
+    <script src="/static/menu_loader.js"></script>
+    <script src="/static/notification.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <!-- Top Navigation Bar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="text-decoration: none; color: inherit;">
+                    <h1>Support Desk</h1>
+                </a>
+            </div>
+            
+            <div class="sidebar-content">
+                <div class="sidebar-section">
+                    <div class="main-nav" id="mainNav">
+                        <!-- Меню загружается динамически -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sidebar-footer">
+                <form method="post" action="/logout">
+                    <button type="submit" class="logout-btn">
+                        <span class="material-icons">logout</span>
+                        <span class="btn-text">Выйти</span>
+                    </button>
+                </form>
+            </div>
+        </aside>
+        
+        <!-- Основной контент -->
+        <main class="main-content dashboard-page">
+            <div class="dashboard-shell">
+                <header class="dashboard-header">
+                    <h1 class="dashboard-title">Дашборд системы поддержки</h1>
+                    <p class="dashboard-subtitle">Актуальные показатели работы команды и ключевые SLA</p>
+                </header>
+                
+                <div id="loading" class="loading">
+                    Загрузка статистики...
+                </div>
+                
+                <div id="dashboard-content" class="dashboard-content hidden">
+                    <!-- Статистические карточки -->
+                    <div class="stats-grid stats-grid-six">
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalTickets">-</div>
+                            <div class="stat-label">Всего заявок</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-value" id="ticketsToday">-</div>
+                            <div class="stat-label">Заявок сегодня</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-value" id="openTickets">-</div>
+                            <div class="stat-label">Открытых заявок</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-value" id="knowledgeEntries">-</div>
+                            <div class="stat-label">Записей в базе знаний</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-value" id="avgResponseTime">-</div>
+                            <div class="stat-label">Среднее время отклика</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-value" id="avgResolutionTime">-</div>
+                            <div class="stat-label">Среднее время обработки</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Графики -->
+                    <div class="chart-grid">
+                        <div class="chart-card">
+                            <div class="chart-title">Заявки за последние 30 дней</div>
+                            <div class="chart-container">
+                                <canvas id="dailyChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="chart-card">
+                            <div class="chart-title">Среднее время отклика и обработки</div>
+                            <div class="chart-container">
+                                <canvas id="timeChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Активные сессии -->
+                    <div class="active-sessions-section">
+                        <h2 class="section-title">📊 Активные диалоги</h2>
+                        
+                        <div class="chart-card">
+                            <div class="chart-title">Распределение активных диалогов</div>
+                            <div class="chart-container" style="height: 300px;">
+                                <canvas id="activeSessionsChart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <div class="classifications-container" id="classificationsContainer" style="margin-top: 20px;">
+                            <div class="classifications-header">Распределение по категориям:</div>
+                            <div class="classifications-grid" id="classificationsGrid">
+                                <!-- Динамически заполняется -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let dailyChart = null;
+        let timeChart = null;
+        let activeSessionsChart = null;
+
+        async function loadDashboardData() {
+            try {
+                const response = await fetch('/api/dashboard/stats');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch dashboard data');
+                }
+                
+                const data = await response.json();
+                updateStatCards(data);
+                updateCharts(data);
+                
+                // Загружаем данные об активных сессиях
+                await loadActiveSessionsData();
+                
+                const loadingEl = document.getElementById('loading');
+                const dashboardContent = document.getElementById('dashboard-content');
+                loadingEl.classList.add('hidden');
+                dashboardContent.classList.remove('hidden');
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+                const loadingEl = document.getElementById('loading');
+                loadingEl.classList.remove('hidden');
+                loadingEl.textContent = 'Ошибка загрузки данных';
+            }
+        }
+
+        async function loadActiveSessionsData() {
+            try {
+                const response = await fetch('/api/dashboard/active_sessions');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch active sessions data');
+                }
+                
+                const data = await response.json();
+                updateActiveSessionsStats(data);
+            } catch (error) {
+                console.error('Error loading active sessions data:', error);
+            }
+        }
+
+        function updateActiveSessionsStats(data) {
+            // Уничтожаем старую диаграмму если есть
+            if (activeSessionsChart) {
+                activeSessionsChart.destroy();
+            }
+            
+            // Создаем столбчатую диаграмму
+            const ctx = document.getElementById('activeSessionsChart').getContext('2d');
+            
+            activeSessionsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [
+                        'Всего активных',
+                        'С ботом',
+                        'С оператором',
+                        'Низкий приоритет',
+                        'Средний приоритет',
+                        'Высокий приоритет'
+                    ],
+                    datasets: [{
+                        label: 'Количество диалогов',
+                        data: [
+                            data.total_active || 0,
+                            data.bot_only || 0,
+                            data.with_operator || 0,
+                            data.bot_by_priority.low || 0,
+                            data.bot_by_priority.medium || 0,
+                            data.bot_by_priority.high || 0
+                        ],
+                        backgroundColor: [
+                            '#6366f1', // Всего - индиго
+                            '#8b5cf6', // Бот - фиолетовый
+                            '#ec4899', // Оператор - розовый
+                            '#10b981', // Низкий - зеленый
+                            '#f59e0b', // Средний - оранжевый
+                            '#ef4444'  // Высокий - красный
+                        ],
+                        borderRadius: 8,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: {
+                                size: 14
+                            },
+                            bodyFont: {
+                                size: 13
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1,
+                                font: {
+                                    size: 12
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                font: {
+                                    size: 11
+                                }
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Обновляем классификации (только для диалогов с ботом)
+            const classificationsGrid = document.getElementById('classificationsGrid');
+            const byClassification = data.bot_by_classification || {};
+            
+            if (Object.keys(byClassification).length === 0) {
+                classificationsGrid.innerHTML = '<div class="no-classifications">Нет данных о классификациях</div>';
+            } else {
+                // Сортируем категории по количеству (по убыванию)
+                const sortedCategories = Object.entries(byClassification)
+                    .sort((a, b) => b[1] - a[1]);
+                
+                let html = '';
+                sortedCategories.forEach(([category, count]) => {
+                    html += `
+                        <div class="classification-item">
+                            <span class="classification-name">${category}</span>
+                            <span class="classification-count">${count}</span>
+                        </div>
+                    `;
+                });
+                
+                classificationsGrid.innerHTML = html;
+            }
+        }
+
+        function updateStatCards(data) {
+            document.getElementById('totalTickets').textContent = data.tickets.total_tickets;
+            document.getElementById('ticketsToday').textContent = data.tickets.tickets_today;
+            document.getElementById('openTickets').textContent = 
+                data.tickets.status_distribution.open + data.tickets.status_distribution.in_progress;
+            document.getElementById('knowledgeEntries').textContent = data.knowledge_entries;
+            
+            // Форматирование времени
+            const formatTime = (minutes) => {
+                if (!minutes) return '-';
+                if (minutes < 60) return `${Math.round(minutes)} мин`;
+                const hours = Math.floor(minutes / 60);
+                const mins = Math.round(minutes % 60);
+                return `${hours}ч ${mins}м`;
+            };
+            
+            document.getElementById('avgResponseTime').textContent = formatTime(data.avg_response_time_minutes);
+            document.getElementById('avgResolutionTime').textContent = formatTime(data.avg_resolution_time_minutes);
+        }
+
+        function updateCharts(data) {
+            // График по дням - на всю ширину
+            const dailyData = data.daily_tickets || [];
+            const dailyChartData = {
+                labels: dailyData.map(item => {
+                    const date = new Date(item.date);
+                    return date.toLocaleDateString('ru-RU', {month: 'short', day: 'numeric'});
+                }),
+                datasets: [{
+                    label: 'Количество заявок',
+                    data: dailyData.map(item => item.tickets_count),
+                    borderColor: '#6d5bff',
+                    backgroundColor: 'rgba(109, 91, 255, 0.12)',
+                    fill: true,
+                    tension: 0.3,
+                    borderWidth: 3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            };
+
+            if (dailyChart) {
+                dailyChart.destroy();
+            }
+            
+            const dailyCtx = document.getElementById('dailyChart').getContext('2d');
+            dailyChart = new Chart(dailyCtx, {
+                type: 'line',
+                data: dailyChartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: {
+                                size: 14
+                            },
+                            bodyFont: {
+                                size: 13
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0,
+                                font: {
+                                    size: 12
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                font: {
+                                    size: 11
+                                }
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+
+            const timeSeries = data.daily_time_metrics || [];
+            const timeLabels = timeSeries.map(item => {
+                const date = new Date(item.date);
+                return date.toLocaleDateString('ru-RU', {month: 'short', day: 'numeric'});
+            });
+
+            const timeChartData = {
+                labels: timeLabels,
+                datasets: [
+                    {
+                        label: 'Среднее время отклика (мин)',
+                        data: timeSeries.map(item => item.avg_response_minutes ?? null),
+                        borderColor: '#6d5bff',
+                        backgroundColor: 'rgba(109, 91, 255, 0.14)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        spanGaps: true
+                    },
+                    {
+                        label: 'Среднее время обработки (мин)',
+                        data: timeSeries.map(item => item.avg_resolution_minutes ?? null),
+                        borderColor: '#1ecb89',
+                        backgroundColor: 'rgba(30, 203, 137, 0.18)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 3,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        spanGaps: true
+                    }
+                ]
+            };
+
+            if (timeChart) {
+                timeChart.destroy();
+            }
+
+            const timeCtx = document.getElementById('timeChart').getContext('2d');
+            timeChart = new Chart(timeCtx, {
+                type: 'line',
+                data: timeChartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: {
+                                    size: 13
+                                }
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y;
+                                    if (value == null) {
+                                        return `${context.dataset.label}: нет данных`;
+                                    }
+                                    const rounded = Number(value).toFixed(1);
+                                    return `${context.dataset.label}: ${rounded} мин`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: (value) => `${value} мин`,
+                                font: { size: 12 }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                font: { size: 11 }
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        // Загружаем данные при загрузке страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDashboardData();
+        });
+        
+        // Обновляем данные каждые 5 минут
+        setInterval(loadDashboardData, 5 * 60 * 1000);
+    </script>
+    <footer class="site-footer">
+        <p>© 2025 Центр искусственного интеллекта СФУ</p>
+    </footer>
+</body>
+</html>

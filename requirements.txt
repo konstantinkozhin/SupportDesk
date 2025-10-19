@@ -1,0 +1,34 @@
+﻿fastapi
+uvicorn[standard]
+aiogram
+sqlalchemy
+aiosqlite
+jinja2
+python-dotenv
+faiss-cpu
+sentence-transformers
+numpy
+pandas
+openpyxl
+python-multipart
+pyyaml
+openai
+rank-bm25
+langchain-community
+nltk
+transformers
+openai-whisper
+torch
+ffmpeg-python
+imageio[ffmpeg]
+bcrypt
+pyngrok
+vk_api
+# Простые парсеры документов
+python-docx
+docx2txt
+PyPDF2
+# Agent dependencies  
+agno
+colorama
+requests

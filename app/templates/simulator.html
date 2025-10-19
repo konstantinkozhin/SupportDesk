@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Симулятор обучения - Support Desk</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/navigation.js"></script>
+    <script src="/static/menu_loader.js"></script>
+    <script src="/static/notification.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <!-- Top Navigation Bar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="text-decoration: none; color: inherit;">
+                    <h1>Support Desk</h1>
+                </a>
+            </div>
+            
+            <div class="sidebar-content">
+                <div class="sidebar-section">
+                    <div class="main-nav" id="mainNav">
+                        <!-- Меню загружается динамически -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sidebar-footer">
+                <form method="post" action="/logout">
+                    <button type="submit" class="logout-btn">
+                        <span class="material-icons">logout</span>
+                        <span class="btn-text">Выйти</span>
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+    <!-- Main Content -->
+    <main class="main-content chat-page simulator-page">
+        <div class="simulator-container">
+            
+            <!-- Character Selection Screen -->
+            <div id="characterSelection" class="simulator-screen">
+                <div class="simulator-hero">
+                    <div class="simulator-hero-copy">
+                        <h1 class="simulator-title">Симулятор обучения оператора</h1>
+                        <p class="simulator-subtitle">Выберите сценарий общения и тренируйтесь давать уверенные, клиентоориентированные ответы.</p>
+                    </div>
+                </div>
+
+                <div class="character-grid" id="characterGrid">
+                    <!-- Characters will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Game Screen -->
+            <div id="gameScreen" class="simulator-screen hidden">
+                <section class="chat">
+                    <div class="chat-top">
+                        <header class="game-header">
+                            <div class="header-left">
+                                <div class="character-info" id="characterInfo">
+                                    <span class="character-emoji">🙂</span>
+                                    <span class="character-name">Новичок Вася</span>
+                                </div>
+                                
+                                <div class="score-display">
+                                    Баллы: <span id="currentScore">0</span>
+                                </div>
+                            </div>
+                            
+                            <div class="progress-container">
+                                <div class="progress-label">
+                                    Вопрос <span id="currentQuestion">1</span> из <span id="totalQuestions">5</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="progressFill"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="header-right">
+                                <button type="button" class="btn-hint" id="hintBtn">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span class="btn-label">Подсказка</span>
+                                </button>
+                                
+                                <button class="btn-end-game" id="endGameBtn">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path d="M15 19l-7-7 7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    <span class="btn-label">Завершить</span>
+                                </button>
+                            </div>
+                        </header>
+                    </div>
+
+                    <!-- Сообщения чата - скроллящаяся область -->
+                    <div class="messages" id="chatMessages">
+                        <!-- Messages will appear here -->
+                    </div>
+                    
+                    <!-- Область ввода ответа - всегда внизу -->
+                    <form class="reply-form" id="answerForm" autocomplete="off">
+                        <div class="message-input-container">
+                            <textarea 
+                                id="answerInput" 
+                                placeholder="Напишите ваш ответ пользователю..."
+                                rows="1"
+                            ></textarea>
+                            
+                            <button type="submit" class="send-button" id="submitBtn" title="Отправить (Enter)">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </form>
+                </section>
+            </div>
+
+            <!-- Results Screen -->
+            <div id="resultsScreen" class="simulator-screen hidden">
+                <div class="results-wrapper">
+                    <div class="results-header">
+                        <h2 class="results-title"><span class="material-icons">celebration</span> Тренировка завершена!</h2>
+                        
+                        <div class="results-stats">
+                            <div class="result-stat">
+                                <div class="result-stat-value" id="finalScore">0</div>
+                                <div class="result-stat-label">Итоговый балл</div>
+                            </div>
+                            
+                            <div class="result-stat">
+                                <div class="result-stat-value" id="avgScore">0</div>
+                                <div class="result-stat-label">Средний балл</div>
+                            </div>
+                            
+                            <div class="result-stat">
+                                <div class="result-stat-value" id="questionsAnswered">0</div>
+                                <div class="result-stat-label">Вопросов</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="results-content">
+                        <h3 class="results-section-title">Детальная статистика:</h3>
+                        <div class="results-history" id="resultsHistory">
+                            <!-- Detailed history will appear here -->
+                        </div>
+                    </div>
+
+                    <div class="results-footer">
+                        <button type="button" class="btn btn-soft-primary btn-large" id="restartBtn">
+                            <span class="material-icons" aria-hidden="true">replay</span>
+                            <span class="btn-label">Начать заново</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // State
+        let currentSession = null;
+        let currentQuestion = null;
+        let currentCharacterEmoji = '🙂';
+        let currentCharacterName = 'Студент';
+
+        // DOM Elements
+        const characterSelection = document.getElementById('characterSelection');
+        const gameScreen = document.getElementById('gameScreen');
+        const resultsScreen = document.getElementById('resultsScreen');
+        const characterGrid = document.getElementById('characterGrid');
+        
+        const characterInfo = document.getElementById('characterInfo');
+        const currentQuestionEl = document.getElementById('currentQuestion');
+        const totalQuestionsEl = document.getElementById('totalQuestions');
+        const progressFill = document.getElementById('progressFill');
+        const currentScoreEl = document.getElementById('currentScore');
+        
+        const chatMessages = document.getElementById('chatMessages');
+        const answerInput = document.getElementById('answerInput');
+        const answerForm = document.getElementById('answerForm');
+        const hintBtn = document.getElementById('hintBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        const endGameBtn = document.getElementById('endGameBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const hintButtonDefaultContent = hintBtn.innerHTML;
+        const submitButtonDefaultContent = submitBtn.innerHTML;
+        const submitButtonLoadingContent = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="spin-animation">
+                <circle cx="12" cy="12" r="10" stroke-width="2" />
+                <path d="M12 6v6l4 2" stroke-width="2" stroke-linecap="round" />
+            </svg>
+        `;
+        let canRespond = false;
+
+        function resetAnswerInput() {
+            answerInput.value = '';
+            answerInput.style.height = 'auto';
+        }
+
+        function lockReply({showSpinner = false, clear = false} = {}) {
+            canRespond = false;
+            submitBtn.disabled = true;
+            answerInput.disabled = true;
+            if (showSpinner) {
+                submitBtn.innerHTML = submitButtonLoadingContent.trim();
+            }
+            if (clear) {
+                resetAnswerInput();
+            }
+        }
+
+        function unlockReply({focus = true} = {}) {
+            canRespond = true;
+            submitBtn.disabled = false;
+            answerInput.disabled = false;
+            submitBtn.innerHTML = submitButtonDefaultContent;
+            if (focus) {
+                answerInput.focus();
+            }
+        }
+
+        lockReply({clear: true});
+
+        function showElement(element) {
+            element.classList.remove('hidden');
+        }
+
+        function hideElement(element) {
+            element.classList.add('hidden');
+        }
+
+        // Load characters on page load
+        async function loadCharacters() {
+            try {
+                const response = await fetch('/api/simulator/characters');
+                const data = await response.json();
+                
+                characterGrid.innerHTML = '';
+                
+                for (const [key, char] of Object.entries(data.characters)) {
+                    const card = document.createElement('div');
+                    card.className = 'character-card';
+                    card.innerHTML = `
+                        <div class="character-avatar">${char.emoji}</div>
+                        <div class="character-card-body">
+                            <h3 class="character-card-name">${char.name}</h3>
+                            <p class="character-card-description">${char.description}</p>
+                        </div>
+                        <button class="btn btn-soft-primary btn-large btn-full" onclick="startSession('${key}')">
+                            <span class="material-icons">play_arrow</span>
+                            <span class="btn-label">Начать тренировку</span>
+                        </button>
+                    `;
+                    characterGrid.appendChild(card);
+                }
+            } catch (error) {
+                console.error('Failed to load characters:', error);
+                characterGrid.innerHTML = '<p class="error-message">Ошибка загрузки персонажей</p>';
+            }
+        }
+
+        // Start new session
+        async function startSession(character) {
+            try {
+                // Get character info first
+                const charsResponse = await fetch('/api/simulator/characters');
+                const charsData = await charsResponse.json();
+                const selectedChar = charsData.characters[character];
+                
+                // Save character info for messages
+                currentCharacterEmoji = selectedChar.emoji;
+                currentCharacterName = selectedChar.name;
+                
+                // Switch to game screen immediately with selected character
+                hideElement(characterSelection);
+                showElement(gameScreen);
+                hideElement(resultsScreen);
+                
+                // Update UI with selected character immediately
+                characterInfo.querySelector('.character-emoji').textContent = selectedChar.emoji;
+                characterInfo.querySelector('.character-name').textContent = selectedChar.name;
+                
+                // Show loading message
+                chatMessages.innerHTML = '';
+                addTypingIndicator('user', selectedChar.emoji);
+                lockReply({clear: true});
+                
+                const response = await fetch('/api/simulator/start', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({character})
+                });
+                
+                const data = await response.json();
+                currentSession = data;
+                
+                // Update remaining UI
+                totalQuestionsEl.textContent = data.questions_total;
+                currentQuestionEl.textContent = data.current_question;
+                progressFill.style.width = `${(data.current_question / data.questions_total) * 100}%`;
+                currentScoreEl.textContent = '0';
+                
+                // Remove typing indicator and show first question
+                removeTypingIndicator();
+                addMessage('user', data.question);
+                resetAnswerInput();
+                unlockReply();
+                
+            } catch (error) {
+                console.error('Failed to start session:', error);
+                removeTypingIndicator();
+                alert('Ошибка запуска сессии');
+                lockReply({clear: true});
+            }
+        }
+        
+        // Add typing indicator
+        function addTypingIndicator(role = 'user', emoji = '🙂') {
+            const typingDiv = document.createElement('div');
+            let messageClass = 'chat-message-user';
+            let avatarHtml = `<div class="message-avatar">${emoji}</div>`;
+
+            if (role === 'system') {
+                messageClass = 'chat-message-system';
+                avatarHtml = `<div class="message-avatar"><span class="material-icons">stars</span></div>`;
+            } else if (role === 'operator') {
+                messageClass = 'chat-message-operator';
+                avatarHtml = `<div class="message-avatar"><span class="material-icons">support_agent</span></div>`;
+            }
+
+            typingDiv.className = `typing-indicator ${messageClass}`;
+            typingDiv.id = 'typingIndicator';
+            
+            const contentHtml = `
+                <div class="message-content">
+                    <div class="typing-bubble">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                </div>
+            `;
+            
+            // Для operator и mentor аватар справа
+            if (role === 'operator' || role === 'mentor') {
+                typingDiv.innerHTML = contentHtml + avatarHtml;
+            } else {
+                typingDiv.innerHTML = avatarHtml + contentHtml;
+            }
+            
+            chatMessages.appendChild(typingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // Remove typing indicator
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) indicator.remove();
+        }
+
+        function buildSystemMessage(icon, title, body = '') {
+            return `
+                <span class="system-copy">
+                    <strong>${title}</strong>
+                    ${body ? `<span class="system-body">${body}</span>` : ''}
+                </span>
+            `;
+        }
+
+        function formatMultiline(text = '') {
+            return text
+                .split('\n')
+                .map(line => line.trim())
+                .filter(Boolean)
+                .join('<br>');
+        }
+
+        function renderHistoryRow(icon, label, text) {
+            return `
+                <div class="history-row">
+                    <span class="material-icons history-icon">${icon}</span>
+                    <div class="history-content">
+                        <strong>${label}</strong>
+                        <span class="history-text">${text}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Add message to chat with Telegram-style grouping
+        let lastSender = null;
+        let lastTimestamp = null;
+
+        function addMessage(sender, text, isSystem = false) {
+            const now = Date.now();
+            const timeDiff = lastTimestamp ? (now - lastTimestamp) / 1000 : Infinity;
+            const isSameSender = lastSender === sender;
+            const isGrouped = isSameSender && timeDiff < 60;
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message chat-message-${sender}`;
+            if (isSystem) messageDiv.classList.add('chat-message-system');
+            
+            // Добавляем классы для группировки
+            if (isGrouped) {
+                messageDiv.classList.add('grouped');
+                // Убираем show-avatar у предыдущего сообщения
+                const previousMessage = chatMessages.lastElementChild;
+                if (previousMessage && previousMessage.classList.contains('chat-message')) {
+                    previousMessage.classList.remove('show-avatar', 'last-in-group');
+                    previousMessage.classList.add('grouped');
+                }
+            }
+            messageDiv.classList.add('last-in-group', 'show-avatar');
+
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            if (sender === 'user') {
+                avatar.textContent = currentCharacterEmoji;
+            } else if (sender === 'operator') {
+                avatar.innerHTML = '<span class="material-icons">support_agent</span>';
+            } else if (sender === 'system') {
+                avatar.innerHTML = '<span class="material-icons">stars</span>';
+            }
+
+            const content = document.createElement('div');
+            content.className = 'message-content';
+            
+            // Имя отправителя
+            const senderName = document.createElement('div');
+            senderName.className = 'message-sender-name';
+            if (sender === 'user') {
+                senderName.textContent = currentCharacterEmoji + ' ' + (currentCharacterName || 'Студент');
+            } else if (sender === 'operator') {
+                senderName.textContent = 'Вы'; // Это ответ оператора (ученика)
+            } else if (sender === 'system') {
+                senderName.textContent = 'Система';
+            }
+
+            const textBlock = document.createElement('div');
+            textBlock.className = 'message-text';
+            if (isSystem) {
+                textBlock.innerHTML = text;
+            } else {
+                textBlock.textContent = text;
+            }
+            
+            const meta = document.createElement('div');
+            meta.className = 'message-meta';
+            meta.textContent = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+            content.appendChild(senderName);
+            content.appendChild(textBlock);
+            content.appendChild(meta);
+            
+            // Только operator справа (аватар добавляем первым, CSS row-reverse перевернет)
+            // System, mentor, user - слева (обычный порядок)
+            if (sender === 'operator') {
+                messageDiv.appendChild(avatar);  // Avatar first for row-reverse
+                messageDiv.appendChild(content);
+            } else {
+                // Для user, mentor, system - обычный порядок (слева)
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(content);
+            }
+
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            lastSender = sender;
+            lastTimestamp = now;
+        }
+
+        // Submit answer
+        async function submitAnswer(event) {
+            if (event) {
+                event.preventDefault();
+            }
+
+            if (!canRespond) {
+                return;
+            }
+            
+            const answer = answerInput.value.trim();
+            if (!answer) {
+                alert('Напишите ответ!');
+                return;
+            }
+            
+            // Add operator's answer to chat
+            addMessage('operator', answer);
+            lockReply({showSpinner: true, clear: true});
+            
+            // Show typing indicator for evaluation (system is analyzing)
+            addTypingIndicator('system');
+            
+            try {
+                const response = await fetch('/api/simulator/respond', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({answer})
+                });
+                
+                const data = await response.json();
+                
+                // Remove typing indicator
+                removeTypingIndicator();
+                
+                // Show evaluation
+                showEvaluation(data);
+                
+                // Update score
+                const currentScore = parseInt(currentScoreEl.textContent);
+                currentScoreEl.textContent = currentScore + data.score;
+                
+            } catch (error) {
+                console.error('Failed to submit answer:', error);
+                removeTypingIndicator();
+                alert('Ошибка отправки ответа');
+                unlockReply({focus: false});
+            }
+        }
+        
+        answerForm.addEventListener('submit', submitAnswer);
+
+        // Show evaluation results as chat messages
+        function showEvaluation(data) {
+            const scoreIcon = data.score >= 80 ? 'workspace_premium' : data.score >= 60 ? 'thumb_up' : 'edit_note';
+            addMessage('system', buildSystemMessage(scoreIcon, `Оценка: ${data.score} баллов`), true);
+
+            addMessage(
+                'system',
+                buildSystemMessage('feedback', 'Обратная связь', formatMultiline(data.feedback)),
+                true
+            );
+
+            addMessage(
+                'system',
+                buildSystemMessage('menu_book', 'Эталонный ответ', formatMultiline(data.ai_suggestion)),
+                true
+            );
+
+            // Continue automatically
+            if (!data.session_complete) {
+                setTimeout(() => nextQuestion(data), 1500);
+            } else {
+                setTimeout(() => showResults(data), 1500);
+            }
+        }
+
+        // Next question - automatic
+        function nextQuestion(data) {
+            // Update progress
+            currentQuestionEl.textContent = data.current_question + 1;
+            progressFill.style.width = `${((data.current_question + 1) / data.questions_total) * 100}%`;
+            
+            // Block input while showing new question
+            lockReply();
+
+            // Show typing indicator
+            addTypingIndicator('user', currentCharacterEmoji);
+            
+            // Simulate typing delay, then show question
+            setTimeout(() => {
+                removeTypingIndicator();
+                addMessage('user', data.next_question);
+                resetAnswerInput();
+                unlockReply();
+            }, 800);
+        }
+
+        // Show results
+        function showResults(data) {
+            lockReply({clear: true});
+            document.getElementById('finalScore').textContent = data.total_score;
+            document.getElementById('avgScore').textContent = Math.round(data.average_score);
+            document.getElementById('questionsAnswered').textContent = data.history.length;
+            
+            // Show detailed history
+            const historyContainer = document.getElementById('resultsHistory');
+            historyContainer.innerHTML = '';
+            
+            data.history.forEach((item, index) => {
+                const scoreClass = item.score >= 80 ? 'excellent' : item.score >= 60 ? 'good' : 'poor';
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                historyItem.innerHTML = `
+                    <div class="history-item-header">
+                        <span class="history-item-number">Вопрос ${index + 1}</span>
+                        <span class="history-item-score history-score-${scoreClass}">${item.score} баллов</span>
+                    </div>
+                    ${renderHistoryRow('help', 'Вопрос', formatMultiline(item.question))}
+                    ${renderHistoryRow('chat_bubble', 'Ваш ответ', formatMultiline(item.user_answer))}
+                    ${renderHistoryRow('menu_book', 'Эталонный ответ', formatMultiline(item.ai_suggestion || item.ideal_answer || 'Не указан'))}
+                    ${renderHistoryRow('feedback', 'Обратная связь', formatMultiline(item.feedback))}
+                `;
+                historyContainer.appendChild(historyItem);
+            });
+            
+            // Switch to results screen
+            hideElement(gameScreen);
+            showElement(resultsScreen);
+        }
+
+        // Get hint
+        hintBtn.addEventListener('click', async () => {
+            try {
+                hintBtn.disabled = true;
+                hintBtn.innerHTML = `
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" class="spin-animation">
+                        <circle cx="12" cy="12" r="10" stroke-width="2" />
+                        <path d="M12 6v6l4 2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <span class="btn-label">Загрузка...</span>
+                `;
+                
+                const response = await fetch('/api/simulator/hint');
+                const data = await response.json();
+                
+                // Вычитаем баллы сразу
+                const currentScore = parseInt(currentScoreEl.textContent);
+                currentScoreEl.textContent = currentScore - 10;
+                
+                // Показываем подсказку с информацией о штрафе
+                addMessage(
+                    'system',
+                    buildSystemMessage('lightbulb', 'Подсказка (−10 баллов)', formatMultiline(data.hint)),
+                    true
+                );
+                
+                // Восстанавливаем кнопку
+                hintBtn.disabled = false;
+                hintBtn.innerHTML = hintButtonDefaultContent;
+                
+            } catch (error) {
+                console.error('Failed to get hint:', error);
+                alert('Ошибка получения подсказки');
+                hintBtn.disabled = false;
+                hintBtn.innerHTML = hintButtonDefaultContent;
+            }
+        });
+
+        // End game
+        endGameBtn.addEventListener('click', async () => {
+            if (!confirm('Вы уверены, что хотите завершить тренировку?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/simulator/end', {method: 'POST'});
+                const data = await response.json();
+                
+                if (data.stats) {
+                    showResults(data.stats);
+                } else {
+                    restartGame();
+                }
+            } catch (error) {
+                console.error('Failed to end game:', error);
+                restartGame();
+            }
+        });
+
+        // Restart game
+        restartBtn.addEventListener('click', restartGame);
+
+        function restartGame() {
+            showElement(characterSelection);
+            hideElement(gameScreen);
+            hideElement(resultsScreen);
+            currentSession = null;
+            lockReply({clear: true});
+            loadCharacters();
+        }
+
+        // Initialize
+        loadCharacters();
+        
+        // Auto-resize textarea
+        answerInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 150) + 'px';
+        });
+        
+        // Submit on Enter (without Shift)
+        answerInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                if (canRespond) {
+                    answerForm.dispatchEvent(new Event('submit'));
+                }
+            }
+        });
+    </script>
+    </div> <!-- .layout -->
+    <footer class="site-footer">
+        <p>© 2025 Центр искусственного интеллекта СФУ</p>
+    </footer>
+</body>
+</html>

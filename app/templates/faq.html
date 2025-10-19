@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Часто задаваемые вопросы - Support Desk</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="faq-page">
+    <div class="faq-shell">
+        <header class="faq-header">
+            <h1 class="faq-title">
+                Часто задаваемые вопросы
+            </h1>
+            <p class="faq-subtitle">Найдите ответы на популярные вопросы сервиса</p>
+        </header>
+
+        <div class="faq-search-box" role="search">
+            <span class="material-icons faq-search-icon" aria-hidden="true">search</span>
+            <input type="text" id="searchInput" placeholder="Поиск по вопросам..." aria-label="Поиск по вопросам">
+        </div>
+
+        <div class="faq-loading" id="faqLoading" role="status" aria-live="polite">Загрузка вопросов…</div>
+
+        <section class="faq-section hidden" id="popularSection">
+            <h2 class="faq-section-title">Самые популярные</h2>
+            <div class="faq-grid" id="popularGrid"></div>
+        </section>
+
+        <section class="faq-section hidden" id="allSection">
+            <h2 class="faq-section-title faq-section-title--all">Все вопросы</h2>
+            <div class="faq-grid" id="allGrid"></div>
+        </section>
+
+        <div class="faq-no-results hidden" id="faqNoResults" role="status" aria-live="polite">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="faq-empty-icon" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p>Ничего не найдено</p>
+            <p class="faq-empty-hint">Попробуйте изменить запрос или ввести другие ключевые слова</p>
+        </div>
+    </div>
+
+    <script>
+        let allFAQs = [];
+        let filteredFAQs = [];
+        let isSearching = false;
+
+        async function loadFAQs() {
+            try {
+                toggleVisibility({ loading: true, popular: false, all: false, empty: false });
+
+                const response = await fetch('/api/faq');
+                if (!response.ok) throw new Error('Failed to load FAQs');
+
+                const data = await response.json();
+                allFAQs = data.items;
+                filteredFAQs = allFAQs;
+
+                renderFAQs();
+            } catch (error) {
+                console.error('Error loading FAQs:', error);
+                const loading = document.getElementById('faqLoading');
+                loading.textContent = 'Ошибка загрузки';
+            }
+        }
+
+        function renderFAQs() {
+            const popularGrid = document.getElementById('popularGrid');
+            const allGrid = document.getElementById('allGrid');
+
+            popularGrid.innerHTML = '';
+            allGrid.innerHTML = '';
+
+            if (filteredFAQs.length === 0) {
+                toggleVisibility({ loading: false, popular: false, all: false, empty: true });
+                return;
+            }
+
+            const popularSection = document.getElementById('popularSection');
+            const allSection = document.getElementById('allSection');
+
+            toggleVisibility({ loading: false, empty: false });
+
+            const popular = filteredFAQs.slice(0, Math.min(filteredFAQs.length, 3));
+            const rest = filteredFAQs.slice(popular.length);
+
+            if (popular.length > 0) {
+                popularSection.classList.remove('hidden');
+                popular.forEach((faq) => {
+                    popularGrid.appendChild(createFAQCard(faq, true));
+                });
+            } else {
+                popularSection.classList.add('hidden');
+            }
+
+            if (rest.length > 0) {
+                allSection.classList.remove('hidden');
+                rest.forEach((faq) => {
+                    allGrid.appendChild(createFAQCard(faq, false));
+                });
+            } else {
+                allSection.classList.add('hidden');
+            }
+        }
+
+        function createFAQCard(faq, isPopular) {
+            const card = document.createElement('div');
+            card.classList.add('faq-card');
+            if (isPopular) {
+                card.classList.add('popular');
+            }
+
+            card.setAttribute('role', 'button');
+            card.setAttribute('tabindex', '0');
+            card.setAttribute('aria-expanded', 'false');
+
+            const question = document.createElement('h3');
+            question.className = 'faq-question';
+            question.textContent = faq.question;
+            card.appendChild(question);
+
+            const answer = document.createElement('p');
+            answer.className = 'faq-answer';
+            answer.textContent = faq.answer;
+            card.appendChild(answer);
+
+            card.addEventListener('click', () => {
+                toggleFaqCard(card);
+            });
+
+            card.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    toggleFaqCard(card);
+                }
+            });
+
+            return card;
+        }
+
+        function toggleFaqCard(card) {
+            card.classList.toggle('expanded');
+            const expanded = card.classList.contains('expanded');
+            card.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        }
+
+        const searchInput = document.getElementById('searchInput');
+        let searchTimeout;
+
+        searchInput.addEventListener('input', (event) => {
+            clearTimeout(searchTimeout);
+            const query = event.target.value.trim();
+
+            searchTimeout = setTimeout(() => {
+                if (query === '') {
+                    filteredFAQs = allFAQs;
+                    renderFAQs();
+                } else if (query.length >= 2) {
+                    performSmartSearch(query);
+                }
+            }, 400);
+        });
+
+        async function performSmartSearch(query) {
+            if (isSearching) return;
+            isSearching = true;
+
+            try {
+                const response = await fetch(`/api/faq/search?q=${encodeURIComponent(query)}`);
+
+                if (!response.ok) {
+                    performLocalSearch(query);
+                    return;
+                }
+
+                const data = await response.json();
+                filteredFAQs = data.items;
+                renderFAQs();
+            } catch (error) {
+                console.error('Search error:', error);
+                performLocalSearch(query);
+            } finally {
+                isSearching = false;
+            }
+        }
+
+        function performLocalSearch(query) {
+            const queryLower = query.toLowerCase();
+            filteredFAQs = allFAQs.filter((faq) =>
+                faq.question.toLowerCase().includes(queryLower) ||
+                faq.answer.toLowerCase().includes(queryLower)
+            );
+            renderFAQs();
+        }
+
+        function toggleVisibility({ loading, popular, all, empty }) {
+            const loadingElement = document.getElementById('faqLoading');
+            const popularSection = document.getElementById('popularSection');
+            const allSection = document.getElementById('allSection');
+            const emptyState = document.getElementById('faqNoResults');
+
+            if (typeof loading === 'boolean') {
+                loadingElement.classList.toggle('hidden', !loading);
+            }
+
+            if (typeof popular === 'boolean') {
+                popularSection.classList.toggle('hidden', !popular);
+            }
+
+            if (typeof all === 'boolean') {
+                allSection.classList.toggle('hidden', !all);
+            }
+
+            if (typeof empty === 'boolean') {
+                emptyState.classList.toggle('hidden', !empty);
+            }
+        }
+
+        loadFAQs();
+        setInterval(loadFAQs, 5 * 60 * 1000);
+    </script>
+</body>
+</html>

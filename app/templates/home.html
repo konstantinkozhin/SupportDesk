@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support Desk</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/navigation.js"></script>
+    <script src="/static/menu_loader.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <!-- Top Navigation Bar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="/" style="text-decoration: none; color: inherit;">
+                    <h1>Support Desk</h1>
+                </a>
+            </div>
+            
+            <div class="sidebar-content">
+                <div class="sidebar-section">
+                    <div class="main-nav" id="mainNav">
+                        <!-- Меню загружается динамически -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sidebar-footer">
+                <form id="logoutForm" method="post" action="/logout">
+                    <button type="submit" class="logout-btn">
+                        <span class="material-icons">logout</span>
+                        <span class="btn-text">Выйти</span>
+                    </button>
+                </form>
+            </div>
+        </aside>
+        
+        <!-- Основной контент -->
+        <main class="main-content home-page">
+            <section class="placeholder">
+                <p>Выберите раздел в меню</p>
+            </section>
+        </main>
+    </div>
+    <footer class="site-footer">
+        <p>© 2025 Центр искусственного интеллекта СФУ</p>
+    </footer>
+</body>
+</html>
